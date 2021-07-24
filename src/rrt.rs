@@ -1,14 +1,12 @@
-
-use acap::vp::VpTree;
-use acap::{Proximity, NearestNeighbors};
-use std::rc::Rc;
-use std::option::Option;
 use crate::goal::{ExactGoal, PredicateGoal};
-use crate::path::NonEmptyPointsPath;
-use std::convert::TryInto;
-use nonempty::NonEmpty;
 use crate::motion_validation::MotionValidator;
-
+use crate::path::NonEmptyPointsPath;
+use acap::vp::VpTree;
+use acap::{NearestNeighbors, Proximity};
+use nonempty::NonEmpty;
+use std::convert::TryInto;
+use std::option::Option;
+use std::rc::Rc;
 
 // A small struct containing a State, and an RC to its parent.
 struct StateWithParent<State> {
@@ -16,9 +14,8 @@ struct StateWithParent<State> {
     parent: Option<Rc<StateWithParent<State>>>,
 }
 
-impl<State:Copy> StateWithParent<State> {
-
-    fn retrace(self: Rc<Self>) -> impl Iterator<Item=State> {
+impl<State: Copy> StateWithParent<State> {
+    fn retrace(self: Rc<Self>) -> impl Iterator<Item = State> {
         itertools::unfold(Some(self), |optst| {
             if let Some(st) = optst.take() {
                 let to_return = st.state;
@@ -30,7 +27,6 @@ impl<State:Copy> StateWithParent<State> {
             }
         })
     }
-
 }
 
 // A wrapper such that we can implement Proximity on it.
@@ -49,47 +45,58 @@ pub fn rrt_connect<State>(
     start_state: State,
     is_valid_transition: impl MotionValidator<State>,
     goal: ExactGoal<State>,
-    mut sample_state: impl FnMut() -> State) -> NonEmptyPointsPath<State> where State: Proximity + Copy {
-
+    mut sample_state: impl FnMut() -> State,
+) -> NonEmptyPointsPath<State>
+where
+    State: Proximity + Copy,
+{
     // Nearest-neighbour lookup tree
     let mut lookup_nearest_fromstart: VpTree<StateProximity<State>> = VpTree::new();
 
-    lookup_nearest_fromstart.push(
-        StateProximity(Rc::new(StateWithParent {
-            state: start_state,
-            parent: None,
-        }))
-    );
+    lookup_nearest_fromstart.push(StateProximity(Rc::new(StateWithParent {
+        state: start_state,
+        parent: None,
+    })));
 
     // Nearest-neighbour lookup tree
     let mut lookup_nearest_fromgoal: VpTree<StateProximity<State>> = VpTree::new();
 
-    lookup_nearest_fromgoal.push(
-        StateProximity(Rc::new(StateWithParent {
-            state: goal.goal,
-            parent: None,
-        }))
-    );
+    lookup_nearest_fromgoal.push(StateProximity(Rc::new(StateWithParent {
+        state: goal.goal,
+        parent: None,
+    })));
 
     loop {
         // Draw a new state from the sampler.
         let sample = sample_state();
 
         // Look up the nearest existing sample
-        let from_start_closest = lookup_nearest_fromstart.nearest(&StateProximity(Rc::new(StateWithParent {
-            parent: None, // This field is kinda ugly, can it be removed somehow?
-            state: sample,
-        }))).expect("Tree should be non-empty.").item.0.clone();
+        let from_start_closest = lookup_nearest_fromstart
+            .nearest(&StateProximity(Rc::new(StateWithParent {
+                parent: None, // This field is kinda ugly, can it be removed somehow?
+                state: sample,
+            })))
+            .expect("Tree should be non-empty.")
+            .item
+            .0
+            .clone();
 
-        let is_valid_fromstart = is_valid_transition.validate_motion(&from_start_closest.state, &sample);
+        let is_valid_fromstart =
+            is_valid_transition.validate_motion(&from_start_closest.state, &sample);
 
         // Look up the nearest existing sample
-        let from_goal_closest = lookup_nearest_fromgoal.nearest(&StateProximity(Rc::new(StateWithParent {
-            parent: None, // This field is kinda ugly, can it be removed somehow?
-            state: sample,
-        }))).expect("Tree should be non-empty.").item.0.clone();
+        let from_goal_closest = lookup_nearest_fromgoal
+            .nearest(&StateProximity(Rc::new(StateWithParent {
+                parent: None, // This field is kinda ugly, can it be removed somehow?
+                state: sample,
+            })))
+            .expect("Tree should be non-empty.")
+            .item
+            .0
+            .clone();
 
-        let is_valid_fromgoal = is_valid_transition.validate_motion(&from_goal_closest.state, &sample);
+        let is_valid_fromgoal =
+            is_valid_transition.validate_motion(&from_goal_closest.state, &sample);
 
         if is_valid_fromstart && is_valid_fromgoal {
             // Backtrack through the tree and find the path
@@ -103,37 +110,35 @@ pub fn rrt_connect<State>(
 
             result.extend(from_goal_closest.retrace());
 
-            return NonEmptyPointsPath { states: NonEmpty::from_vec(result).expect("RRTConnect never makes empty paths.") };
+            return NonEmptyPointsPath {
+                states: NonEmpty::from_vec(result).expect("RRTConnect never makes empty paths."),
+            };
         } else {
             if is_valid_fromstart {
-                lookup_nearest_fromstart.push(
-                    StateProximity(Rc::new(StateWithParent {
-                        state: sample,
-                        parent: Some(from_start_closest),
-                    }))
-                );
+                lookup_nearest_fromstart.push(StateProximity(Rc::new(StateWithParent {
+                    state: sample,
+                    parent: Some(from_start_closest),
+                })));
             }
             if is_valid_fromgoal {
-                lookup_nearest_fromstart.push(
-                    StateProximity(Rc::new(StateWithParent {
-                        state: sample,
-                        parent: Some(from_goal_closest),
-                    }))
-                );
+                lookup_nearest_fromstart.push(StateProximity(Rc::new(StateWithParent {
+                    state: sample,
+                    parent: Some(from_goal_closest),
+                })));
             }
         }
     }
-
-
 }
 
-
-
-pub fn rrt<State>(start_state: State,
-              is_valid_transition: impl MotionValidator<State>,
-              goal: impl PredicateGoal<State>,
-              mut sample_state: impl FnMut() -> State) -> NonEmptyPointsPath<State> where State: Proximity + Copy {
-
+pub fn rrt<State>(
+    start_state: State,
+    is_valid_transition: impl MotionValidator<State>,
+    goal: impl PredicateGoal<State>,
+    mut sample_state: impl FnMut() -> State,
+) -> NonEmptyPointsPath<State>
+where
+    State: Proximity + Copy,
+{
     // Keep track of node inserted last
     let mut last_inserted = Rc::new(StateWithParent {
         state: start_state,
@@ -148,15 +153,19 @@ pub fn rrt<State>(start_state: State,
 
     // Keep going until the last sample was the goal.
     while !goal.is_goal(&last_inserted.state) {
-
         // Draw a new state from the sampler.
         let sample = sample_state();
 
         // Look up the nearest existing sample
-        let parent = lookup_nearest.nearest(&StateProximity(Rc::new(StateWithParent {
-            parent: None, // This field is kinda ugly, can it be removed somehow?
-            state: sample,
-        }))).expect("Tree should be non-empty.").item.0.clone();
+        let parent = lookup_nearest
+            .nearest(&StateProximity(Rc::new(StateWithParent {
+                parent: None, // This field is kinda ugly, can it be removed somehow?
+                state: sample,
+            })))
+            .expect("Tree should be non-empty.")
+            .item
+            .0
+            .clone();
 
         if is_valid_transition.validate_motion(&parent.state, &sample) {
             // Update last_inserted
@@ -170,17 +179,19 @@ pub fn rrt<State>(start_state: State,
         }
     }
 
-    let mut result : Vec<State> = last_inserted.retrace().collect();
+    let mut result: Vec<State> = last_inserted.retrace().collect();
     result.reverse();
 
-    return NonEmptyPointsPath { states: NonEmpty::from_vec(result).expect("RRT never produces empty paths.") };
+    return NonEmptyPointsPath {
+        states: NonEmpty::from_vec(result).expect("RRT never produces empty paths."),
+    };
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{thread_rng, Rng};
     use acap::Proximity;
+    use rand::{thread_rng, Rng};
 
     #[test]
     fn rrt_1d() {
@@ -200,31 +211,24 @@ mod tests {
 
         let mut rng = thread_rng();
 
-        let is_valid_transition  = move |_from : &SimpleState, _to : &SimpleState| {
-            true
-        };
+        let is_valid_transition = move |_from: &SimpleState, _to: &SimpleState| true;
 
         let goal = ExactGoal { goal: end };
 
-        let result = rrt(start,
-                         &is_valid_transition,
-                         goal,
-                         || {
-                             if rng.gen_bool(0.05) {
-                                 end
-                             } else {
-                                 SimpleState(rng.gen_range(-100.0..100.0))
-                             } });
+        let result = rrt(start, &is_valid_transition, goal, || {
+            if rng.gen_bool(0.05) {
+                end
+            } else {
+                SimpleState(rng.gen_range(-100.0..100.0))
+            }
+        });
 
         assert_eq!(&start, result.states.first());
         assert_eq!(&end, result.states.last());
 
-        let result = rrt_connect(start,
-                                 &is_valid_transition,
-                                 goal,
-                                 || {
-                                     SimpleState(rng.gen_range(-100.0..100.0))
-                                 });
+        let result = rrt_connect(start, &is_valid_transition, goal, || {
+            SimpleState(rng.gen_range(-100.0..100.0))
+        });
 
         assert_eq!(&start, result.states.first());
         assert_eq!(&end, result.states.last());

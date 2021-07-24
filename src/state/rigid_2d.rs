@@ -25,9 +25,7 @@ pub mod rigid_body_state_2d {
 
     impl Lerp<f64> for RigidBodyState2 {
         fn lerp(&self, other: &Self, t: f64) -> Self {
-            RigidBodyState2(
-                self.0.lerp_slerp(&other.0, t)
-            )
+            RigidBodyState2(self.0.lerp_slerp(&other.0, t))
         }
     }
 }

@@ -1,6 +1,6 @@
-use nalgebra::Point3;
-use acap::{Proximity, Metric};
 use crate::state::{Distance, Lerp};
+use acap::{Metric, Proximity};
+use nalgebra::Point3;
 
 #[derive(Copy, Clone)]
 pub struct PointState(pub Point3<f64>);
@@ -21,9 +21,7 @@ impl Proximity for PointState {
     }
 }
 
-impl Metric for PointState {
-
-}
+impl Metric for PointState {}
 
 impl Lerp<f64> for PointState {
     fn lerp(&self, other: &Self, t: f64) -> Self {

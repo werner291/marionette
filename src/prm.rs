@@ -1,10 +1,10 @@
-use petgraph::graph::{UnGraph, NodeIndex};
 use acap::vp::VpTree;
-use acap::{Proximity, NearestNeighbors};
+use acap::{NearestNeighbors, Proximity};
+use petgraph::graph::{NodeIndex, UnGraph};
 
 struct StateWithNode<State> {
     state: State,
-    node_id: NodeIndex
+    node_id: NodeIndex,
 }
 
 impl<State: Proximity> Proximity for StateWithNode<State> {
@@ -15,9 +15,9 @@ impl<State: Proximity> Proximity for StateWithNode<State> {
     }
 }
 
-struct PRM<State : Proximity> {
+struct PRM<State: Proximity> {
     graph: UnGraph<State, ()>,
-    lookup_nearest: VpTree<StateWithNode<State>>
+    lookup_nearest: VpTree<StateWithNode<State>>,
 }
 
 impl<State: Proximity> PRM<State> {
@@ -26,18 +26,20 @@ impl<State: Proximity> PRM<State> {
     }
 }
 
-impl<State> PRM<State> where State: Copy + Proximity {
-
-    fn build_k(k : usize,
-               num_samples: usize,
-             is_valid_state: impl Fn(&State) -> bool,
-             is_valid_transition: impl Fn(&State, &State) -> bool,
-             mut sample_state: impl FnMut() -> State) -> Self {
-
+impl<State> PRM<State>
+where
+    State: Copy + Proximity,
+{
+    fn build_k(
+        k: usize,
+        num_samples: usize,
+        is_valid_state: impl Fn(&State) -> bool,
+        is_valid_transition: impl Fn(&State, &State) -> bool,
+        mut sample_state: impl FnMut() -> State,
+    ) -> Self {
         let mut prm = Self::empty();
 
         for _ in 0..num_samples {
-
             let sample = sample_state();
 
             if is_valid_state(&sample) {
@@ -46,15 +48,19 @@ impl<State> PRM<State> where State: Copy + Proximity {
         }
 
         prm
-
     }
 
-    pub fn insert_knn(&mut self, k: usize, is_valid_transition: impl Fn(&State, &State) -> bool, sample: State) -> NodeIndex<u32> {
+    pub fn insert_knn(
+        &mut self,
+        k: usize,
+        is_valid_transition: impl Fn(&State, &State) -> bool,
+        sample: State,
+    ) -> NodeIndex<u32> {
         let graph_node = self.graph.add_node(sample);
 
         let lookup_node = StateWithNode {
             state: sample,
-            node_id: graph_node
+            node_id: graph_node,
         };
 
         self.connect_knn(k, is_valid_transition, &lookup_node);
@@ -64,21 +70,32 @@ impl<State> PRM<State> where State: Copy + Proximity {
         graph_node
     }
 
-    fn connect_knn(&mut self, k: usize, is_valid_transition: impl Fn(&State, &State) -> bool, lookup_node: &StateWithNode<State>) {
+    fn connect_knn(
+        &mut self,
+        k: usize,
+        is_valid_transition: impl Fn(&State, &State) -> bool,
+        lookup_node: &StateWithNode<State>,
+    ) {
         for neighbour in self.lookup_nearest.k_nearest(lookup_node, k) {
             if is_valid_transition(&lookup_node.state, &neighbour.item.state) {
-                self.graph.add_edge(lookup_node.node_id, neighbour.item.node_id, ());
+                self.graph
+                    .add_edge(lookup_node.node_id, neighbour.item.node_id, ());
             }
         }
     }
 
-    fn with_temporary_node_knn<T>(&mut self, sample: State, k: usize, is_valid_transition: impl Fn(&State, &State) -> bool, f: impl FnOnce(&mut Self, NodeIndex) -> T) -> T {
-
+    fn with_temporary_node_knn<T>(
+        &mut self,
+        sample: State,
+        k: usize,
+        is_valid_transition: impl Fn(&State, &State) -> bool,
+        f: impl FnOnce(&mut Self, NodeIndex) -> T,
+    ) -> T {
         let node = self.graph.add_node(sample);
 
         let lookup_node = StateWithNode {
             state: sample,
-            node_id: node
+            node_id: node,
         };
 
         self.connect_knn(k, is_valid_transition, &lookup_node);
@@ -93,7 +110,7 @@ impl<State> PRM<State> where State: Copy + Proximity {
     fn empty() -> PRM<State> {
         Self {
             graph: UnGraph::new_undirected(),
-            lookup_nearest: VpTree::new()
+            lookup_nearest: VpTree::new(),
         }
     }
 }
@@ -101,13 +118,12 @@ impl<State> PRM<State> where State: Copy + Proximity {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{thread_rng, Rng};
     use acap::Proximity;
     use petgraph::prelude::EdgeRef;
+    use rand::{thread_rng, Rng};
 
     #[test]
     fn prm_point_to_point() {
-
         #[derive(Copy, Clone, Debug)]
         struct SimpleState(f64);
 
@@ -121,26 +137,45 @@ mod tests {
 
         let mut rng = thread_rng();
 
-        let mut prm = PRM::build_k(10, 100, |_| true, |_,_| true, || SimpleState(rng.gen_range(-100.0..100.0)));
+        let mut prm = PRM::build_k(
+            10,
+            100,
+            |_| true,
+            |_, _| true,
+            || SimpleState(rng.gen_range(-100.0..100.0)),
+        );
 
         for _ in 0..100 {
             let start = SimpleState(rng.gen_range(-100.0..100.0));
             let end = SimpleState(rng.gen_range(-100.0..100.0));
 
-            let result = prm.with_temporary_node_knn(start, 10, |_,_| true, |prm, start_id| {
-                prm.with_temporary_node_knn(end, 10, |_,_| true, |prm, end_id| {
-
-                    petgraph::algo::astar(prm.peek_graph(),
-                                          start_id, |g| g == end_id,
-                                          |e| prm.peek_graph().node_weight(e.source()).unwrap().distance(&prm.peek_graph().node_weight(e.target()).unwrap()),
-                                          |n| prm.peek_graph().node_weight(n).unwrap().distance(&end))
-
-                })
-            });
-
+            let result = prm.with_temporary_node_knn(
+                start,
+                10,
+                |_, _| true,
+                |prm, start_id| {
+                    prm.with_temporary_node_knn(
+                        end,
+                        10,
+                        |_, _| true,
+                        |prm, end_id| {
+                            petgraph::algo::astar(
+                                prm.peek_graph(),
+                                start_id,
+                                |g| g == end_id,
+                                |e| {
+                                    prm.peek_graph().node_weight(e.source()).unwrap().distance(
+                                        &prm.peek_graph().node_weight(e.target()).unwrap(),
+                                    )
+                                },
+                                |n| prm.peek_graph().node_weight(n).unwrap().distance(&end),
+                            )
+                        },
+                    )
+                },
+            );
 
             assert!(result.is_some());
         }
-
     }
 }
