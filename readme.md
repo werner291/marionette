@@ -1,6 +1,6 @@
 # Marionette
 
-A library for motion planning, primarily intended for robotics, written in pure rust.
+A crate for motion planning, primarily intended for robotics, written in pure rust.
 
 ## Goals
 
@@ -11,3 +11,7 @@ A library for motion planning, primarily intended for robotics, written in pure 
 - Allow the user to use as much or as little of the library as desired.
 - Provide sensible defaults, rather than requiring enormous masses of (generated) configuration files and "wizards".
 - Explore the power of Rust to make the above goals easier to achieve.
+
+## Status of this crate
+
+This crate is still in early development; you probably shouldn't use it for anything serious at the moment.
