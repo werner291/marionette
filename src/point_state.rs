@@ -1,4 +1,4 @@
-use crate::state::{Distance, Lerp};
+use crate::state::{Distance, LinearInterpolate};
 use acap::{Metric, Proximity};
 use nalgebra::Point3;
 
@@ -23,12 +23,12 @@ impl Proximity for PointState {
 
 impl Metric for PointState {}
 
-impl Lerp<f64> for PointState {
-    fn lerp(&self, other: &Self, t: f64) -> Self {
+impl LinearInterpolate<f64> for PointState {
+    fn linear_interpolate(&self, other: &Self, t: f64) -> Self {
         PointState(Point3::new(
-            self.0.x.lerp(&other.0.x, t),
-            self.0.y.lerp(&other.0.y, t),
-            self.0.z.lerp(&other.0.z, t),
+            self.0.x.linear_interpolate(&other.0.x, t),
+            self.0.y.linear_interpolate(&other.0.y, t),
+            self.0.z.linear_interpolate(&other.0.z, t),
         ))
     }
 }

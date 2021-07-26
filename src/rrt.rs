@@ -4,7 +4,7 @@ use crate::path::NonEmptyPointsPath;
 use acap::vp::VpTree;
 use acap::{NearestNeighbors, Proximity};
 use nonempty::NonEmpty;
-use std::convert::TryInto;
+
 use std::option::Option;
 use std::rc::Rc;
 

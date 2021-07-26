@@ -16,8 +16,15 @@ itertools = "0.10.1"
 petgraph = "0.6.0"
 urdf-rs = "0.6.1"
 nonempty = "0.7.0"
-
-kiss3d = "0.31.0"
+ordered-float = "2.7.0"
+proptest = "1.0.0"
+proptest-derive = "0.3.0"
+nalgebra = { version="0.26.0", features=["proptest-support"] }
 ncollide3d = "0.29.0"
 ncollide2d = "0.29.0"
-nalgebra = "0.26.2"
+
+[dev-dependencies]
+kiss3d = "0.31.0"
+
+[profile.dev]
+opt-level = 1

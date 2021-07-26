@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc da795ebeee0e7174d9a09994594c63b6a4b37d07f91e974c45688cfd28dcf2e0 # shrinks to start_point = RigidBodyState2(Isometry { rotation: Unit { value: Complex { re: 1.0, im: 0.0 } }, translation: Translation { vector: Matrix { data: [[0.0, 0.0]] } } }), end_point = RigidBodyState2(Isometry { rotation: Unit { value: Complex { re: -0.03892407582494054, im: 0.9992421710081967 } }, translation: Translation { vector: Matrix { data: [[0.0, 0.0]] } } }), steering_direction = Left

@@ -1,5 +1,5 @@
 use crate::path::{ParametrizedPath, SteeringFunction};
-use crate::state::{Distance, Lerp};
+use crate::state::{Distance, LinearInterpolate};
 use std::marker::PhantomData;
 use std::ops::{Div, Not};
 
@@ -26,7 +26,7 @@ pub trait MotionValidator<State> {
 
 pub struct UniformLinearInterpolatedSamplingValidator<State, Validate>
 where
-    State: Lerp<f64>,
+    State: LinearInterpolate<f64>,
     Validate: StateValidator<State>,
 {
     pub validate_state: Validate,
@@ -36,7 +36,7 @@ where
 
 impl<State, Validate> UniformLinearInterpolatedSamplingValidator<State, Validate>
 where
-    State: Lerp<f64>,
+    State: LinearInterpolate<f64>,
     Validate: StateValidator<State>,
 {
     pub fn new(validator: Validate, sample_interval: f64) -> Self {
@@ -51,7 +51,7 @@ where
 impl<State, Validate> MotionValidator<State>
     for UniformLinearInterpolatedSamplingValidator<State, Validate>
 where
-    State: Lerp<f64> + Distance<State, DistanceValue = f64>,
+    State: LinearInterpolate<f64> + Distance<State, DistanceValue = f64>,
     Validate: StateValidator<State>,
 {
     fn validate_motion(&self, st1: &State, st2: &State) -> bool {
@@ -61,7 +61,7 @@ where
             .any(|i| {
                 let t = i as f64 / (samples - 1) as f64;
 
-                !self.validate_state.validate_state(&st1.lerp(st2, t))
+                !self.validate_state.validate_state(&st1.linear_interpolate(st2, t))
             })
             .not()
     }
@@ -78,7 +78,7 @@ where
 
 pub struct SteeredSamplingValidator<State, Validate, Steer>
 where
-    State: Lerp<f64>,
+    State: LinearInterpolate<f64>,
     Validate: StateValidator<State>,
     Steer: SteeringFunction<State>,
 {
@@ -88,10 +88,25 @@ where
     _phantom: PhantomData<State>,
 }
 
+impl<State, Validate, Steer> SteeredSamplingValidator<State, Validate, Steer>
+    where
+    State: LinearInterpolate<f64>,
+    Validate: StateValidator<State>,
+    Steer: SteeringFunction<State>, {
+    pub fn new(validate_state:Validate, steering_function:Steer, sample_interval: f64) -> Self {
+        Self {
+            validate_state,
+            steering_function,
+            sample_interval,
+            _phantom: PhantomData,
+        }
+    }
+}
+
 impl<State, Validate, Steer> MotionValidator<State>
     for SteeredSamplingValidator<State, Validate, Steer>
 where
-    State: Lerp<f64> + Distance<State, DistanceValue = f64>,
+    State: LinearInterpolate<f64> + Distance<State, DistanceValue = f64>,
     Validate: StateValidator<State>,
     Steer: SteeringFunction<State>,
 {

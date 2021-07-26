@@ -1,35 +1,33 @@
-mod dubins;
+pub mod state;
+pub mod dubins;
 pub mod goal;
 pub mod motion_validation;
 pub mod path;
 pub mod point_state;
 pub mod prm;
 pub mod rrt;
-pub mod state;
 pub mod steering;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    
     use crate::goal::ExactGoal;
-    use crate::motion_validation::{
-        MotionValidator, StateValidator, UniformLinearInterpolatedSamplingValidator,
-    };
+    use crate::motion_validation::{MotionValidator, UniformLinearInterpolatedSamplingValidator, SteeredSamplingValidator};
     use crate::path::{
-        build_compound_path_from_steering_function, parametrize_by_distance, CompoundPath,
-        LerpPathDiscretePath, OutOfRangeError, ParametrizedPath,
+        build_compound_path_from_steering_function, ParametrizedPath,
     };
     use crate::rrt::rrt_connect;
-    use crate::state::rigid_2d::rigid_body_state_2d::RigidBodyState2;
-    use crate::state::{Distance, Lerp};
-    use kiss3d::light::Light;
-    use kiss3d::nalgebra::UnitQuaternion;
-    use kiss3d::window::{State, Window};
-    use nalgebra::{Isometry2, Isometry3, Point2, Rotation2, Vector2, Vector3};
+    use crate::state::rigid_2d::RigidBodyState2;
+    
+    
+    
+    use kiss3d::window::{Window};
+    use nalgebra::{Isometry2, Isometry3, Vector2, Vector3};
     use ncollide2d::shape::Cuboid;
     use rand::{thread_rng, Rng};
-    use std::ops::{Not, RangeInclusive};
+    use std::ops::{Not};
 
+    #[ignore]
     #[test]
     fn dubins_parking() {
         let start = RigidBodyState2(Isometry2::new(Vector2::new(5.0, 0.0), 0.0));
@@ -58,7 +56,7 @@ mod tests {
 
         let path = rrt_connect(
             start,
-            UniformLinearInterpolatedSamplingValidator::new(validate_state, 0.1),
+            SteeredSamplingValidator::new(validate_state, crate::dubins::compute_dubins_motion, 0.1),
             ExactGoal { goal: end },
             || {
                 RigidBodyState2(Isometry2::new(
@@ -117,36 +115,35 @@ mod tests {
         }
     }
 
+    #[ignore]
     #[test]
     fn test_integration() {
-        use acap::Proximity;
-        use petgraph::prelude::EdgeRef;
-        use rand::{thread_rng, Rng};
+        
+        
+        use rand::{thread_rng};
 
-        use crate::goal::ExactGoal;
-        use crate::path::{
-            parametrize_by_distance, LerpPathDiscretePath, ParametrizedPath, TimedState,
-        };
+        
+        
         use crate::point_state::PointState;
-        use crate::rrt::rrt_connect;
-        use itertools::Itertools;
-        use nalgebra::{distance, Isometry3, Point3};
-        use ncollide3d::math::Isometry;
-        use ncollide3d::query::algorithms::gjk::GJKResult::Intersection;
+        
+        
+        use nalgebra::{Isometry3, Point3};
+        
+        
         use ncollide3d::shape::{Ball, Cuboid, Shape};
-        use std::f64::consts::PI;
-        use std::ops::{Div, Not};
+        
+        
 
         let cuboid = Cuboid::new(Vector3::new(2.0f64, 1.0, 3.0));
 
-        let start_state = PointState(Point3::new(-10.0, 0.0, 0.0));
+        let _start_state = PointState(Point3::new(-10.0, 0.0, 0.0));
 
         let obstacle_xform =
             Isometry3::new(Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0));
 
-        let end_state = PointState(Point3::new(10.0, 0.0, 0.0));
+        let _end_state = PointState(Point3::new(10.0, 0.0, 0.0));
 
-        let mut rng = thread_rng();
+        let _rng = thread_rng();
 
         const SAMPLE_DISTANCE: f64 = 0.1;
 
@@ -162,7 +159,7 @@ mod tests {
 
         let valid = UniformLinearInterpolatedSamplingValidator::new(validate_state, 0.1);
 
-        fn test(v: impl MotionValidator<PointState>) {}
+        fn test(_v: impl MotionValidator<PointState>) {}
 
         test(valid);
 

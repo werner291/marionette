@@ -1,11 +1,11 @@
-use crate::state::Lerp;
+use crate::state::LinearInterpolate;
 use itertools::Itertools;
-use kiss3d::window::State;
 use nonempty::NonEmpty;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::marker::PhantomData;
-use std::ops::{Range, RangeBounds, RangeInclusive};
+use std::ops::{RangeInclusive};
+use std::prelude::v1::Vec;
 
 #[derive(Debug)]
 pub struct DiscretePointsPath<State> {
@@ -31,9 +31,9 @@ impl<State> TryFrom<DiscretePointsPath<State>> for NonEmptyPointsPath<State> {
 
 pub struct TimedState<State>(pub State, pub f64);
 
-impl<State: Lerp<f64>> Lerp<f64> for TimedState<State> {
-    fn lerp(&self, other: &Self, t: f64) -> Self {
-        TimedState(self.0.lerp(&other.0, t), self.1.lerp(&other.1, t))
+impl<State: LinearInterpolate<f64>> LinearInterpolate<f64> for TimedState<State> {
+    fn linear_interpolate(&self, other: &Self, t: f64) -> Self {
+        TimedState(self.0.linear_interpolate(&other.0, t), self.1.linear_interpolate(&other.1, t))
     }
 }
 
@@ -70,7 +70,7 @@ pub trait ParametrizedPath<State> {
 
 pub struct LerpPathDiscretePath<'a, State>(pub &'a NonEmptyPointsPath<TimedState<State>>);
 
-impl<'a, State: Lerp<f64> + Copy> ParametrizedPath<State> for LerpPathDiscretePath<'a, State> {
+impl<'a, State: LinearInterpolate<f64> + Copy> ParametrizedPath<State> for LerpPathDiscretePath<'a, State> {
     fn defined_range(&self) -> RangeInclusive<f64> {
         let TimedState(_, t0) = self.0.states.first();
         let TimedState(_, t1) = self.0.states.last();
@@ -89,7 +89,7 @@ impl<'a, State: Lerp<f64> + Copy> ParametrizedPath<State> for LerpPathDiscretePa
             let TimedState(s0, t0) = &self.0.states[first_after - 1];
             let TimedState(s1, t1) = &self.0.states[first_after];
 
-            Ok(s0.lerp(s1, (t - t0) / (t1 - t0)))
+            Ok(s0.linear_interpolate(s1, (t - t0) / (t1 - t0)))
         }
     }
 }
@@ -174,7 +174,7 @@ mod tests {
     use crate::path::{LerpPathDiscretePath, NonEmptyPointsPath, ParametrizedPath, TimedState};
     use core::iter::once;
     use nonempty::NonEmpty;
-    use rand::distributions::uniform::SampleRange;
+    
     use rand::distributions::Uniform;
     use rand::{thread_rng, Rng};
 
