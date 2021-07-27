@@ -112,7 +112,7 @@ where
 }
 
 pub struct CompoundPath<State, Subpath: ParametrizedPath<State>> {
-    segments: NonEmpty<Subpath>,
+    pub segments: NonEmpty<Subpath>,
     _phantom: PhantomData<State>,
 }
 
@@ -165,7 +165,10 @@ impl<State, Subpath: ParametrizedPath<State>> ParametrizedPath<State>
                 }
             })
             .map_err(|_| OutOfRangeError)
-            .and_then(|seg| self.segments[seg].sample(t))
+            .and_then(|seg| {
+                assert!(self.segments[seg].defined_range().contains(&t));
+                self.segments[seg].sample(t)
+            })
     }
 }
 

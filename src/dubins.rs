@@ -8,6 +8,8 @@ use proptest::arbitrary::Arbitrary;
 use std::iter::IntoIterator;
 use num_traits::Pow;
 use std::option::Option;
+use crate::state::LinearInterpolate;
+use std::option::Option::{Some, None};
 
 #[derive(Debug)]
 enum StraightlineArcPathSegment {
@@ -55,7 +57,7 @@ impl StraightlineArcPathSegment {
 #[derive(Debug)]
 pub struct DubinsMotion {
     start_time: f64,
-    start_point: Isometry2<f64>,
+    // start_point: Isometry2<f64>,
     segments: [StraightlineArcPathSegment; 3],
 }
 
@@ -134,7 +136,7 @@ pub fn outer_tangent_motion(
 
     let path = DubinsMotion {
         start_time,
-        start_point: from.0.clone(),
+        // start_point: from.0.clone(),
         segments: [
             {
                 let arc = StraightlineArcPathSegment::CircularArc {
@@ -210,7 +212,7 @@ pub fn inner_tangent_motion(
 
         let path = DubinsMotion {
             start_time,
-            start_point: from.0.clone(),
+            // start_point: from.0.clone(),
             segments: [
                 {
                     let arc = StraightlineArcPathSegment::CircularArc {
@@ -245,14 +247,97 @@ pub fn inner_tangent_motion(
     }
 }
 
+pub fn three_circular_motion(
+    from: &RigidBodyState2,
+    to: &RigidBodyState2,
+    start_time: f64,
+    first_turn_direction: LeftRight,
+) -> Option<DubinsMotion> {
+    let radius = match first_turn_direction {
+        LeftRight::Left => -1.0,
+        LeftRight::Right => 1.0
+    };
+
+    let from_heading = &from.0.rotation * Vector2::new(0.0, 1.0);
+    let to_heading = &to.0.rotation * Vector2::new(0.0, 1.0);
+
+    let right_center = &from.0 * Point2::new(radius, 0.0);
+    let right_center2 = &to.0 * Point2::new(radius, 0.0);
+    let delta  = &right_center2 - &right_center;
+
+    if delta.norm() > 4.0*radius.abs() {
+        None
+    } else {
+        let midpoint = right_center.linear_interpolate(&right_center2, 0.5);
+        let thirdpoint_from_midpoint = {
+            let a: f64 = (2.0 * radius.abs()).pow(2);
+            let b: f64 = (delta.norm() / 2.0).pow(2);
+            (a - b).sqrt()
+        };
+        let third_circle_center = midpoint + Rotation2::new(-PI / 2.0) * delta.normalize() * thirdpoint_from_midpoint;
+
+        let tangent_vector_1 = Rotation2::new(-radius.signum() * PI / 2.0) * (third_circle_center - right_center);
+        let tangent_vector_2 = Rotation2::new(-radius.signum() * PI / 2.0) * (third_circle_center - right_center2);
+
+        let angle_1 = wrap_negative(radius.signum() * Rotation2::rotation_between(&tangent_vector_1, &from_heading).angle());
+        let angle_2 = wrap_negative(radius.signum() * Rotation2::rotation_between(&to_heading, &tangent_vector_2).angle());
+        let angle_middle = wrap_negative(radius.signum() * Rotation2::rotation_between(&tangent_vector_1, &tangent_vector_2).angle());
+
+        let mut transform_along_path = from.0.clone();
+
+        let path = DubinsMotion {
+            start_time,
+            // start_point: from.0.clone(),
+            segments: [
+                {
+                    let arc = StraightlineArcPathSegment::CircularArc {
+                        from_point: { transform_along_path.clone() },
+                        radius,
+                        angle: angle_1,
+                    };
+
+                    transform_along_path = arc.sample_at(arc.length());
+
+                    arc
+                },
+                {
+                    let arc = StraightlineArcPathSegment::CircularArc {
+                        from_point: { transform_along_path.clone() },
+                        radius: -radius,
+                        angle: angle_middle,
+                    };
+
+                    transform_along_path = arc.sample_at(arc.length());
+
+                    arc
+                },
+                StraightlineArcPathSegment::CircularArc {
+                    from_point: transform_along_path,
+                    radius,
+                    angle: angle_2,
+                },
+            ],
+        };
+
+        Some(path)
+    }
+
+}
+
 pub fn compute_dubins_motion(from: &RigidBodyState2,
                              to: &RigidBodyState2,
                              start_time: f64) -> DubinsMotion {
     use core::iter::once;
 
-    once(outer_tangent_motion(from, to, start_time, LeftRight::Right))
+    let motion = once(outer_tangent_motion(from, to, start_time, LeftRight::Right))
         .chain(once(outer_tangent_motion(from, to, start_time, LeftRight::Left)))
-        .min_by_key(|motion| OrderedFloat(*motion.defined_range().end())).unwrap()
+        .chain(inner_tangent_motion(from, to, start_time, LeftRight::Left).into_iter())
+        .chain(inner_tangent_motion(from, to, start_time, LeftRight::Right).into_iter())
+        .chain(three_circular_motion(from, to, start_time, LeftRight::Left).into_iter())
+        .chain(three_circular_motion(from, to, start_time, LeftRight::Right).into_iter())
+        .min_by_key(|motion| OrderedFloat(*motion.defined_range().end())).unwrap();
+
+    motion
 }
 
 fn wrap_negative(a: f64) -> f64 {
@@ -275,6 +360,7 @@ mod tests {
     use rand::{Rng};
     use proptest::prelude::*;
     use std::f64::consts::PI;
+    use crate::dubins::LeftRight::Left;
 
     fn arbitrary_left_right() -> impl Strategy<Value=LeftRight> {
         prop_oneof![
@@ -283,10 +369,10 @@ mod tests {
         ]
     }
 
-    fn arbitrary_dubins_state() -> impl Strategy<Value=RigidBodyState2> {
+    fn arbitrary_dubins_state(square_radius: f64) -> impl Strategy<Value=RigidBodyState2> {
         (
-            -1000.0..=1000.0,
-            -1000.0..=1000.0,
+            -square_radius..=square_radius,
+            -square_radius..=square_radius,
             -PI..=PI
         ).prop_map(|(x, y, angle)| {
             RigidBodyState2(Isometry2::new(
@@ -298,20 +384,38 @@ mod tests {
 
     proptest! {
         #[test]
-        fn test_inner_tangent(start_point in arbitrary_dubins_state(),
-                              end_point in arbitrary_dubins_state(),
+        fn test_inner_tangent(start_point in arbitrary_dubins_state(100.0),
+                              end_point in arbitrary_dubins_state(100.0),
                                 steering_direction in arbitrary_left_right()) {
             if let Some(motion) = inner_tangent_motion(&start_point, &end_point, 0.0, steering_direction) {
                 check_dubins_motion(start_point, end_point, motion);
             }
         }
 
-                #[test]
-        fn test_outer_tangent(start_point in arbitrary_dubins_state(),
-                                    end_point in arbitrary_dubins_state(),
+        #[test]
+        fn test_outer_tangent(start_point in arbitrary_dubins_state(100.0),
+                                    end_point in arbitrary_dubins_state(100.0),
                                     steering_direction in arbitrary_left_right()) {
             check_dubins_motion(start_point, end_point,
                 outer_tangent_motion(&start_point, &end_point, 0.0, steering_direction));
+        }
+
+        #[test]
+        fn test_threecircle_motion(start_point in arbitrary_dubins_state(2.5),
+                                    end_point in arbitrary_dubins_state(2.5),
+                                    steering_direction in arbitrary_left_right()) {
+            if let Some(motion) = three_circular_motion(&start_point, &end_point, 0.0, steering_direction) {
+                check_dubins_motion(start_point, end_point, motion);
+            }
+        }
+
+                #[test]
+        fn test_full_dubins(start_point in arbitrary_dubins_state(100.0),
+                                    end_point in arbitrary_dubins_state(100.0),
+                                    steering_direction in arbitrary_left_right()) {
+            let motion = compute_dubins_motion(&start_point, &end_point, 0.0);
+                check_dubins_motion(start_point, end_point, motion);
+
         }
     }
 

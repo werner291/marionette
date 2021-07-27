@@ -7,6 +7,7 @@ use nonempty::NonEmpty;
 
 use std::option::Option;
 use std::rc::Rc;
+use std::prelude::v1::*;
 
 // A small struct containing a State, and an RC to its parent.
 struct StateWithParent<State> {
@@ -96,7 +97,7 @@ where
             .clone();
 
         let is_valid_fromgoal =
-            is_valid_transition.validate_motion(&from_goal_closest.state, &sample);
+            is_valid_transition.validate_motion(&sample, &from_goal_closest.state);
 
         if is_valid_fromstart && is_valid_fromgoal {
             // Backtrack through the tree and find the path
@@ -121,7 +122,7 @@ where
                 })));
             }
             if is_valid_fromgoal {
-                lookup_nearest_fromstart.push(StateProximity(Rc::new(StateWithParent {
+                lookup_nearest_fromgoal.push(StateProximity(Rc::new(StateWithParent {
                     state: sample,
                     parent: Some(from_goal_closest),
                 })));
@@ -192,6 +193,7 @@ mod tests {
     use super::*;
     use acap::Proximity;
     use rand::{thread_rng, Rng};
+    use crate::point_state::PointState;
 
     #[test]
     fn rrt_1d() {

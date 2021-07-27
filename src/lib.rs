@@ -10,7 +10,6 @@ pub mod steering;
 
 #[cfg(test)]
 mod tests {
-    
     use crate::goal::ExactGoal;
     use crate::motion_validation::{MotionValidator, UniformLinearInterpolatedSamplingValidator, SteeredSamplingValidator};
     use crate::path::{
@@ -18,9 +17,8 @@ mod tests {
     };
     use crate::rrt::rrt_connect;
     use crate::state::rigid_2d::RigidBodyState2;
-    
-    
-    
+    use crate::state::Distance;
+
     use kiss3d::window::{Window};
     use nalgebra::{Isometry2, Isometry3, Vector2, Vector3};
     use ncollide2d::shape::Cuboid;
@@ -52,29 +50,49 @@ mod tests {
                 .not()
         };
 
-        let mut rng = thread_rng();
+    let mut rng = thread_rng();
 
-        let path = rrt_connect(
-            start,
-            SteeredSamplingValidator::new(validate_state, crate::dubins::compute_dubins_motion, 0.1),
-            ExactGoal { goal: end },
-            || {
-                RigidBodyState2(Isometry2::new(
-                    Vector2::new(rng.gen_range(-10.0..10.0), rng.gen_range(-10.0..10.0)),
-                    rng.gen_range(0.0..2.0 * std::f64::consts::PI),
-                ))
-            },
-        );
+    let path = rrt_connect(
+        start,
+        SteeredSamplingValidator::new(validate_state, crate::dubins::compute_dubins_motion, 0.1),
+        ExactGoal { goal: end },
+        || {
+            RigidBodyState2(Isometry2::new(
+                Vector2::new(rng.gen_range(-10.0..10.0), rng.gen_range(-10.0..10.0)),
+                rng.gen_range(0.0..2.0 * std::f64::consts::PI),
+            ))
+        },
+    );
 
-        dbg!(&path);
+    assert!(path.states.first().distance(&start) < 1.0e-5);
+    assert!(path.states.last().distance(&end) < 1.0e-5);
+    println!("ok");
 
-        let path = build_compound_path_from_steering_function(
-            path,
-            crate::dubins::compute_dubins_motion,
-            0.0,
-        )
+    let path = build_compound_path_from_steering_function(
+        path,
+        crate::dubins::compute_dubins_motion,
+        0.0,
+    )
         .expect("RRT-connect should have at least two states: start and end.");
 
+    let range = path.defined_range();
+
+    assert!(path.sample(*range.start()).unwrap().distance(&start) < 1.0e-5);
+    assert!(path.sample(*range.end()).unwrap().distance(&end) < 1.0e-5);
+
+        //
+        // let steps = 1000;
+        //
+        // // for i in 0..=steps {
+        // //
+        // //     let t1 = path.defined_range().end() * (i as f64 / steps as f64);
+        // //     let sample = path.sample(t1).unwrap();
+        // //
+        // //     println!("{}, {}", sample.0.translation.vector.x, sample.0.translation.vector.y);
+        // // }
+        //
+        //
+        //
         fn lift_isometry(iso2: &nalgebra::Isometry2<f64>) -> nalgebra::Isometry3<f64> {
             Isometry3::new(
                 Vector3::new(iso2.translation.vector.x, 0.0, iso2.translation.vector.y),
@@ -99,8 +117,11 @@ mod tests {
             car_cube.set_local_transformation(lift_isometry(pos).cast());
         }
 
-        let range = path.defined_range();
+
+
         let mut t = *range.start();
+
+
 
         while window.render() {
             let state_interpolated = path.sample(t).expect("t should be kept in range");
@@ -118,50 +139,42 @@ mod tests {
     #[ignore]
     #[test]
     fn test_integration() {
-        
-        
         use rand::{thread_rng};
 
-        
-        
         use crate::point_state::PointState;
-        
-        
+
         use nalgebra::{Isometry3, Point3};
-        
-        
+
         use ncollide3d::shape::{Ball, Cuboid, Shape};
-        
-        
 
-        let cuboid = Cuboid::new(Vector3::new(2.0f64, 1.0, 3.0));
-
-        let _start_state = PointState(Point3::new(-10.0, 0.0, 0.0));
-
-        let obstacle_xform =
-            Isometry3::new(Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0));
-
-        let _end_state = PointState(Point3::new(10.0, 0.0, 0.0));
-
-        let _rng = thread_rng();
-
-        const SAMPLE_DISTANCE: f64 = 0.1;
-
-        let validate_state = |state: &PointState| {
-            ncollide3d::query::proximity(
-                &Isometry3::from(state.0),
-                &cuboid,
-                &obstacle_xform,
-                &cuboid,
-                0.0,
-            ) == ncollide3d::query::Proximity::Intersecting
-        };
-
-        let valid = UniformLinearInterpolatedSamplingValidator::new(validate_state, 0.1);
-
-        fn test(_v: impl MotionValidator<PointState>) {}
-
-        test(valid);
+        // let cuboid = Cuboid::new(Vector3::new(2.0f64, 1.0, 3.0));
+        //
+        // let _start_state = PointState(Point3::new(-10.0, 0.0, 0.0));
+        //
+        // let obstacle_xform =
+        //     Isometry3::new(Vector3::new(0.0, 0.0, 0.0), Vector3::new(0.0, 0.0, 0.0));
+        //
+        // let _end_state = PointState(Point3::new(10.0, 0.0, 0.0));
+        //
+        // let _rng = thread_rng();
+        //
+        // const SAMPLE_DISTANCE: f64 = 0.1;
+        //
+        // let validate_state = |state: &PointState| {
+        //     ncollide3d::query::proximity(
+        //         &Isometry3::from(state.0),
+        //         &cuboid,
+        //         &obstacle_xform,
+        //         &cuboid,
+        //         0.0,
+        //     ) == ncollide3d::query::Proximity::Intersecting
+        // };
+        //
+        // let valid = UniformLinearInterpolatedSamplingValidator::new(validate_state, 0.1);
+        //
+        // fn test(_v: impl MotionValidator<PointState>) {}
+        //
+        // test(valid);
 
         //
         // let path = rrt_connect(

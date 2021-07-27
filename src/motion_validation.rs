@@ -117,15 +117,14 @@ where
         let steer_range = steer_path.defined_range();
 
         (0..samples)
-            .any(|i| {
+            .all(|i| {
                 let t = i as f64 / (samples - 1) as f64;
 
-                !self.validate_state.validate_state(
+                self.validate_state.validate_state(
                     &steer_path
                         .sample(t * steer_range.end())
                         .expect("Steering function received out-of-range parameter."),
                 )
             })
-            .not()
     }
 }
