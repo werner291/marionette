@@ -270,18 +270,21 @@ mod tests {
 
             check_path_start_matches(begin, &linear_path);
             check_path_end_matches(end, &linear_path);
+            check_path_smooth(&linear_path);
+        }
+    }
 
-            let steps = std::cmp::max(linear_path.defined_range().end().round() as usize * 100, 1000);
+    fn check_path_smooth<State,Path>(path: &Path)where State: Distance<State,DistanceValue=f64>, Path: ParametrizedPath<State> {
+        let steps = std::cmp::max(path.defined_range().end().round() as usize * 100, 1000);
 
-            for i in 0..steps {
-                let t1 = linear_path.defined_range().end() * (i as f64 / steps as f64);
-                let t2 = linear_path.defined_range().end() * ((i + 1) as f64 / steps as f64);
+        for i in 0..steps {
+            let t1 = path.defined_range().end() * (i as f64 / steps as f64);
+            let t2 = path.defined_range().end() * ((i + 1) as f64 / steps as f64);
 
-                let st1 = linear_path.sample(t1).unwrap();
-                let st2 = linear_path.sample(t2).unwrap();
+            let st1 = path.sample(t1).unwrap();
+            let st2 = path.sample(t2).unwrap();
 
-                assert!(crate::state::Distance::distance(&st1, &st2) < 0.1);
-            }
+            assert!(crate::state::Distance::distance(&st1, &st2) < 0.1);
         }
     }
 
