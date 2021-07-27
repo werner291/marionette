@@ -192,13 +192,17 @@ where
 mod tests {
     use super::*;
     use crate::point_state::PointState;
-    use acap::Proximity;
     use rand::{thread_rng, Rng};
+    use nalgebra::Point2;
+    use crate::motion_validation::UniformLinearInterpolatedSamplingValidator;
+    use crate::path::{parametrize_by_distance, ParametrizedPath, LerpPathDiscretePath};
+    use crate::state::Distance;
 
     #[test]
     fn rrt_1d() {
         #[derive(Clone, Copy, PartialEq, Debug)]
         struct SimpleState(f64);
+        use acap::Proximity;
 
         impl Proximity for SimpleState {
             type Distance = f64;
@@ -234,5 +238,65 @@ mod tests {
 
         assert_eq!(&start, result.states.first());
         assert_eq!(&end, result.states.last());
+    }
+
+    #[test]
+    fn rrt_connect_arounddisk() {
+
+        for _ in 0..50 {
+            let begin = PointState(Point2::new(-10.0, 0.0));
+            let end = PointState(Point2::new(10.0, 0.0));
+
+            fn validate_state(state: &PointState<2>) -> bool {
+                nalgebra::distance(&state.0, &Point2::new(0.0, 0.0)) > 5.0
+            }
+
+            let transition_validator = UniformLinearInterpolatedSamplingValidator::new(validate_state, 0.1);
+
+            let mut rng = thread_rng();
+
+            let path = rrt_connect(
+                begin,
+                transition_validator,
+                ExactGoal { goal: end },
+                || PointState(Point2::new(rng.gen_range(-10.0..=10.0), rng.gen_range(-10.0..=10.0)))
+            );
+
+            let path = parametrize_by_distance(path, crate::state::Distance::distance, 0.0);
+
+            let linear_path = LerpPathDiscretePath(&path);
+
+            assert_eq!(0.0, *linear_path.defined_range().start());
+
+            check_path_start_matches(begin, &linear_path);
+            check_path_end_matches(end, &linear_path);
+
+            let steps = std::cmp::max(linear_path.defined_range().end().round() as usize * 100, 1000);
+
+            for i in 0..steps {
+                let t1 = linear_path.defined_range().end() * (i as f64 / steps as f64);
+                let t2 = linear_path.defined_range().end() * ((i + 1) as f64 / steps as f64);
+
+                let st1 = linear_path.sample(t1).unwrap();
+                let st2 = linear_path.sample(t2).unwrap();
+
+                assert!(crate::state::Distance::distance(&st1, &st2) < 0.1);
+            }
+        }
+    }
+
+
+    fn check_path_end_matches<State,Path>(end: State, path: &Path) where State: Distance<State,DistanceValue=f64>, Path: ParametrizedPath<State> {
+        let computed_end = path.sample(*path.defined_range().end())
+            .expect("Should not give out-of-range.");
+
+        assert!(end.distance(&computed_end) < 1.0e-5);
+    }
+
+    fn check_path_start_matches<State, Path>(begin: State, path: &Path) where State: Distance<State, DistanceValue=f64>, Path: ParametrizedPath<State> {
+        let computed_start = path.sample(*path.defined_range().start())
+            .expect("Should not give out-of-range.");
+
+        assert!(begin.distance(&computed_start) < 1.0e-10);
     }
 }

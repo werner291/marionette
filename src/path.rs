@@ -6,6 +6,7 @@ use std::convert::TryFrom;
 use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 use std::prelude::v1::Vec;
+use std::result::Result;
 
 #[derive(Debug)]
 pub struct DiscretePointsPath<State> {
@@ -83,7 +84,7 @@ impl<'a, State: LinearInterpolate<f64> + Copy> ParametrizedPath<State>
     }
 
     fn sample(&self, t: f64) -> Result<State, OutOfRangeError> {
-        if t < self.0.states.first().1 || t >= self.0.states.last().1 {
+        if ! self.defined_range().contains(&t) {
             // FIXME range bounds
             // t is before the first sample point, or beyond the last sample point
             Err(OutOfRangeError)
@@ -91,10 +92,15 @@ impl<'a, State: LinearInterpolate<f64> + Copy> ParametrizedPath<State>
             // Find the index of the first point that has a time greater than the sample point.
             let first_after = self.0.states.tail.partition_point(move |TimedState(_,state_t)| *state_t <= t)+1 /*+1 since there's the tail*/;
 
-            let TimedState(s0, t0) = &self.0.states[first_after - 1];
-            let TimedState(s1, t1) = &self.0.states[first_after];
+            if first_after == self.0.states.len() {
+                let TimedState(s0, t0) = &self.0.states[first_after - 1];
+                Ok(*s0)
+            } else {
+                let TimedState(s0, t0) = &self.0.states[first_after - 1];
+                let TimedState(s1, t1) = &self.0.states[first_after];
 
-            Ok(s0.linear_interpolate(s1, (t - t0) / (t1 - t0)))
+                Ok(s0.linear_interpolate(s1, (t - t0) / (t1 - t0)))
+            }
         }
     }
 }
