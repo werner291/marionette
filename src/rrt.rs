@@ -268,38 +268,11 @@ mod tests {
 
             assert_eq!(0.0, *linear_path.defined_range().start());
 
-            check_path_start_matches(begin, &linear_path);
-            check_path_end_matches(end, &linear_path);
-            check_path_smooth(&linear_path);
-        }
-    }
-
-    fn check_path_smooth<State,Path>(path: &Path)where State: Distance<State,DistanceValue=f64>, Path: ParametrizedPath<State> {
-        let steps = std::cmp::max(path.defined_range().end().round() as usize * 100, 1000);
-
-        for i in 0..steps {
-            let t1 = path.defined_range().end() * (i as f64 / steps as f64);
-            let t2 = path.defined_range().end() * ((i + 1) as f64 / steps as f64);
-
-            let st1 = path.sample(t1).unwrap();
-            let st2 = path.sample(t2).unwrap();
-
-            assert!(crate::state::Distance::distance(&st1, &st2) < 0.1);
+            crate::path::test_utilities::check_path_start_matches(begin, &linear_path);
+            crate::path::test_utilities::check_path_end_matches(end, &linear_path);
+            crate::path::test_utilities::check_path_smooth(&linear_path);
         }
     }
 
 
-    fn check_path_end_matches<State,Path>(end: State, path: &Path) where State: Distance<State,DistanceValue=f64>, Path: ParametrizedPath<State> {
-        let computed_end = path.sample(*path.defined_range().end())
-            .expect("Should not give out-of-range.");
-
-        assert!(end.distance(&computed_end) < 1.0e-5);
-    }
-
-    fn check_path_start_matches<State, Path>(begin: State, path: &Path) where State: Distance<State, DistanceValue=f64>, Path: ParametrizedPath<State> {
-        let computed_start = path.sample(*path.defined_range().start())
-            .expect("Should not give out-of-range.");
-
-        assert!(begin.distance(&computed_start) < 1.0e-10);
-    }
 }

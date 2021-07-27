@@ -555,6 +555,8 @@ mod tests {
 
         let steps = std::cmp::max(motion.defined_range().end().round() as usize * 100, 1000);
 
+
+
         for i in 0..steps {
             let t1 = motion.defined_range().end() * (i as f64 / steps as f64);
             let t2 = motion.defined_range().end() * ((i + 1) as f64 / steps as f64);
