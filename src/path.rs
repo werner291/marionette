@@ -84,7 +84,7 @@ impl<'a, State: LinearInterpolate<f64> + Copy> ParametrizedPath<State>
     }
 
     fn sample(&self, t: f64) -> Result<State, OutOfRangeError> {
-        if ! self.defined_range().contains(&t) {
+        if !self.defined_range().contains(&t) {
             // FIXME range bounds
             // t is before the first sample point, or beyond the last sample point
             Err(OutOfRangeError)
@@ -93,7 +93,7 @@ impl<'a, State: LinearInterpolate<f64> + Copy> ParametrizedPath<State>
             let first_after = self.0.states.tail.partition_point(move |TimedState(_,state_t)| *state_t <= t)+1 /*+1 since there's the tail*/;
 
             if first_after == self.0.states.len() {
-                let TimedState(s0, t0) = &self.0.states[first_after - 1];
+                let TimedState(s0, _t0) = &self.0.states[first_after - 1];
                 Ok(*s0)
             } else {
                 let TimedState(s0, t0) = &self.0.states[first_after - 1];
@@ -185,10 +185,14 @@ impl<State, Subpath: ParametrizedPath<State>> ParametrizedPath<State>
 
 #[cfg(test)]
 pub(crate) mod test_utilities {
-    use crate::state::Distance;
     use crate::path::ParametrizedPath;
+    use crate::state::Distance;
 
-    pub(crate) fn check_path_smooth<State,Path>(path: &Path) where State: Distance<State,DistanceValue=f64>, Path: ParametrizedPath<State> {
+    pub(crate) fn check_path_smooth<State, Path>(path: &Path)
+    where
+        State: Distance<State, DistanceValue = f64>,
+        Path: ParametrizedPath<State>,
+    {
         let steps = std::cmp::max(path.defined_range().end().round() as usize * 100, 1000);
 
         for i in 0..steps {
@@ -202,15 +206,25 @@ pub(crate) mod test_utilities {
         }
     }
 
-    pub(crate) fn check_path_end_matches<State,Path>(end: State, path: &Path) where State: Distance<State,DistanceValue=f64>, Path: ParametrizedPath<State> {
-        let computed_end = path.sample(*path.defined_range().end())
+    pub(crate) fn check_path_end_matches<State, Path>(end: State, path: &Path)
+    where
+        State: Distance<State, DistanceValue = f64>,
+        Path: ParametrizedPath<State>,
+    {
+        let computed_end = path
+            .sample(*path.defined_range().end())
             .expect("Should not give out-of-range.");
 
         assert!(end.distance(&computed_end) < 1.0e-5);
     }
 
-    pub(crate) fn check_path_start_matches<State, Path>(begin: State, path: &Path) where State: Distance<State, DistanceValue=f64>, Path: ParametrizedPath<State> {
-        let computed_start = path.sample(*path.defined_range().start())
+    pub(crate) fn check_path_start_matches<State, Path>(begin: State, path: &Path)
+    where
+        State: Distance<State, DistanceValue = f64>,
+        Path: ParametrizedPath<State>,
+    {
+        let computed_start = path
+            .sample(*path.defined_range().start())
             .expect("Should not give out-of-range.");
 
         assert!(begin.distance(&computed_start) < 1.0e-10);
@@ -254,6 +268,4 @@ mod tests {
             assert!((t - sample).abs() < 1.0e-10);
         }
     }
-
-
 }

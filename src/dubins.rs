@@ -65,7 +65,7 @@ impl StraightlineArcPathSegment {
                 from_point,
             } => from_point * Translation2::from(Vector2::new(0.0, t)),
             Self::CircularArc {
-                angle, // length() already takes this into account
+                angle: _, // length() already takes this into account
                 signed_radius: radius,
                 from_point,
             } => {
@@ -179,7 +179,7 @@ pub fn outer_tangent_motion(
     );
 
     // Keep track of the transform as it is swept through the path, piece by piece.
-    let mut transform_along_path = from.0.clone();
+    let transform_along_path = from.0.clone();
 
     // Assemble the resulting three-section Dubins motion.
     arc_straight_arc_motion(
@@ -469,9 +469,8 @@ mod tests {
     use crate::path::ParametrizedPath;
     use crate::state::rigid_2d::RigidBodyState2;
     use crate::state::Distance;
-    use nalgebra::{Isometry2, UnitComplex, Vector2};
+    use nalgebra::{Isometry2, Vector2};
 
-    use crate::dubins::LeftRight::Left;
     use proptest::prelude::*;
     use rand::Rng;
     use std::f64::consts::PI;
@@ -523,7 +522,7 @@ mod tests {
                 #[test]
         fn test_full_dubins(start_point in arbitrary_dubins_state(100.0),
                                     end_point in arbitrary_dubins_state(100.0),
-                                    steering_direction in arbitrary_left_right(),
+                                    _steering_direction in arbitrary_left_right(),
         radius in 0.5 ..= 2.0) {
             let motion = shortest_dubins_motion(&start_point, &end_point, 0.0, radius);
                 check_dubins_motion(start_point, end_point, motion);
@@ -554,8 +553,6 @@ mod tests {
         assert!(end_point.distance(&computed_end) < 1.0e-5);
 
         let steps = std::cmp::max(motion.defined_range().end().round() as usize * 100, 1000);
-
-
 
         for i in 0..steps {
             let t1 = motion.defined_range().end() * (i as f64 / steps as f64);

@@ -11,9 +11,7 @@ pub mod steering;
 #[cfg(test)]
 mod tests {
     use crate::goal::ExactGoal;
-    use crate::motion_validation::{
-        MotionValidator, SteeredSamplingValidator, UniformLinearInterpolatedSamplingValidator,
-    };
+    use crate::motion_validation::SteeredSamplingValidator;
     use crate::path::{build_compound_path_from_steering_function, ParametrizedPath};
     use crate::rrt::rrt_connect;
     use crate::state::rigid_2d::RigidBodyState2;
@@ -140,13 +138,6 @@ mod tests {
     #[ignore]
     #[test]
     fn test_integration() {
-        use rand::thread_rng;
-
-        use crate::point_state::PointState;
-
-        use nalgebra::{Isometry3, Point3};
-
-        use ncollide3d::shape::{Ball, Cuboid, Shape};
 
         // let cuboid = Cuboid::new(Vector3::new(2.0f64, 1.0, 3.0));
         //

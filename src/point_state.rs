@@ -1,6 +1,6 @@
 use crate::state::{Distance, LinearInterpolate};
 use acap::{Metric, Proximity};
-use nalgebra::{Point, Point3, SimdValue};
+use nalgebra::{Point, SimdValue};
 
 #[derive(Copy, Clone)]
 pub struct PointState<const D: usize>(pub Point<f64, D>);

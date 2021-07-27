@@ -191,12 +191,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::point_state::PointState;
-    use rand::{thread_rng, Rng};
-    use nalgebra::Point2;
     use crate::motion_validation::UniformLinearInterpolatedSamplingValidator;
-    use crate::path::{parametrize_by_distance, ParametrizedPath, LerpPathDiscretePath};
-    use crate::state::Distance;
+    use crate::path::{parametrize_by_distance, LerpPathDiscretePath, ParametrizedPath};
+    use crate::point_state::PointState;
+    use nalgebra::Point2;
+    use rand::{thread_rng, Rng};
 
     #[test]
     fn rrt_1d() {
@@ -242,7 +241,6 @@ mod tests {
 
     #[test]
     fn rrt_connect_arounddisk() {
-
         for _ in 0..50 {
             let begin = PointState(Point2::new(-10.0, 0.0));
             let end = PointState(Point2::new(10.0, 0.0));
@@ -251,16 +249,17 @@ mod tests {
                 nalgebra::distance(&state.0, &Point2::new(0.0, 0.0)) > 5.0
             }
 
-            let transition_validator = UniformLinearInterpolatedSamplingValidator::new(validate_state, 0.1);
+            let transition_validator =
+                UniformLinearInterpolatedSamplingValidator::new(validate_state, 0.1);
 
             let mut rng = thread_rng();
 
-            let path = rrt_connect(
-                begin,
-                transition_validator,
-                ExactGoal { goal: end },
-                || PointState(Point2::new(rng.gen_range(-10.0..=10.0), rng.gen_range(-10.0..=10.0)))
-            );
+            let path = rrt_connect(begin, transition_validator, ExactGoal { goal: end }, || {
+                PointState(Point2::new(
+                    rng.gen_range(-10.0..=10.0),
+                    rng.gen_range(-10.0..=10.0),
+                ))
+            });
 
             let path = parametrize_by_distance(path, crate::state::Distance::distance, 0.0);
 
@@ -273,6 +272,4 @@ mod tests {
             crate::path::test_utilities::check_path_smooth(&linear_path);
         }
     }
-
-
 }
