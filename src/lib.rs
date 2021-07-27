@@ -1,4 +1,3 @@
-pub mod state;
 pub mod dubins;
 pub mod goal;
 pub mod motion_validation;
@@ -6,24 +5,26 @@ pub mod path;
 pub mod point_state;
 pub mod prm;
 pub mod rrt;
+pub mod state;
 pub mod steering;
 
 #[cfg(test)]
 mod tests {
     use crate::goal::ExactGoal;
-    use crate::motion_validation::{MotionValidator, UniformLinearInterpolatedSamplingValidator, SteeredSamplingValidator};
-    use crate::path::{
-        build_compound_path_from_steering_function, ParametrizedPath,
+    use crate::motion_validation::{
+        MotionValidator, SteeredSamplingValidator, UniformLinearInterpolatedSamplingValidator,
     };
+    use crate::path::{build_compound_path_from_steering_function, ParametrizedPath};
     use crate::rrt::rrt_connect;
     use crate::state::rigid_2d::RigidBodyState2;
     use crate::state::Distance;
 
-    use kiss3d::window::{Window};
+    use crate::dubins::{compute_dubins_motion, DubinsMotion};
+    use kiss3d::window::Window;
     use nalgebra::{Isometry2, Isometry3, Vector2, Vector3};
     use ncollide2d::shape::Cuboid;
     use rand::{thread_rng, Rng};
-    use std::ops::{Not};
+    use std::ops::Not;
 
     #[ignore]
     #[test]
@@ -50,35 +51,39 @@ mod tests {
                 .not()
         };
 
-    let mut rng = thread_rng();
+        let mut rng = thread_rng();
 
-    let path = rrt_connect(
-        start,
-        SteeredSamplingValidator::new(validate_state, crate::dubins::compute_dubins_motion, 0.1),
-        ExactGoal { goal: end },
-        || {
-            RigidBodyState2(Isometry2::new(
-                Vector2::new(rng.gen_range(-10.0..10.0), rng.gen_range(-10.0..10.0)),
-                rng.gen_range(0.0..2.0 * std::f64::consts::PI),
-            ))
-        },
-    );
+        fn steering_function(
+            start: &RigidBodyState2,
+            end: &RigidBodyState2,
+            start_time: f64,
+        ) -> DubinsMotion {
+            compute_dubins_motion(start, end, start_time, 1.0)
+        }
 
-    assert!(path.states.first().distance(&start) < 1.0e-5);
-    assert!(path.states.last().distance(&end) < 1.0e-5);
-    println!("ok");
+        let path = rrt_connect(
+            start,
+            SteeredSamplingValidator::new(validate_state, steering_function, 0.1),
+            ExactGoal { goal: end },
+            || {
+                RigidBodyState2(Isometry2::new(
+                    Vector2::new(rng.gen_range(-10.0..10.0), rng.gen_range(-10.0..10.0)),
+                    rng.gen_range(0.0..2.0 * std::f64::consts::PI),
+                ))
+            },
+        );
 
-    let path = build_compound_path_from_steering_function(
-        path,
-        crate::dubins::compute_dubins_motion,
-        0.0,
-    )
-        .expect("RRT-connect should have at least two states: start and end.");
+        assert!(path.states.first().distance(&start) < 1.0e-5);
+        assert!(path.states.last().distance(&end) < 1.0e-5);
+        println!("ok");
 
-    let range = path.defined_range();
+        let path = build_compound_path_from_steering_function(path, steering_function, 0.0)
+            .expect("RRT-connect should have at least two states: start and end.");
 
-    assert!(path.sample(*range.start()).unwrap().distance(&start) < 1.0e-5);
-    assert!(path.sample(*range.end()).unwrap().distance(&end) < 1.0e-5);
+        let range = path.defined_range();
+
+        assert!(path.sample(*range.start()).unwrap().distance(&start) < 1.0e-5);
+        assert!(path.sample(*range.end()).unwrap().distance(&end) < 1.0e-5);
 
         //
         // let steps = 1000;
@@ -117,11 +122,7 @@ mod tests {
             car_cube.set_local_transformation(lift_isometry(pos).cast());
         }
 
-
-
         let mut t = *range.start();
-
-
 
         while window.render() {
             let state_interpolated = path.sample(t).expect("t should be kept in range");
@@ -139,7 +140,7 @@ mod tests {
     #[ignore]
     #[test]
     fn test_integration() {
-        use rand::{thread_rng};
+        use rand::thread_rng;
 
         use crate::point_state::PointState;
 

@@ -4,7 +4,7 @@ use nonempty::NonEmpty;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::marker::PhantomData;
-use std::ops::{RangeInclusive};
+use std::ops::RangeInclusive;
 use std::prelude::v1::Vec;
 
 #[derive(Debug)]
@@ -33,7 +33,10 @@ pub struct TimedState<State>(pub State, pub f64);
 
 impl<State: LinearInterpolate<f64>> LinearInterpolate<f64> for TimedState<State> {
     fn linear_interpolate(&self, other: &Self, t: f64) -> Self {
-        TimedState(self.0.linear_interpolate(&other.0, t), self.1.linear_interpolate(&other.1, t))
+        TimedState(
+            self.0.linear_interpolate(&other.0, t),
+            self.1.linear_interpolate(&other.1, t),
+        )
     }
 }
 
@@ -70,7 +73,9 @@ pub trait ParametrizedPath<State> {
 
 pub struct LerpPathDiscretePath<'a, State>(pub &'a NonEmptyPointsPath<TimedState<State>>);
 
-impl<'a, State: LinearInterpolate<f64> + Copy> ParametrizedPath<State> for LerpPathDiscretePath<'a, State> {
+impl<'a, State: LinearInterpolate<f64> + Copy> ParametrizedPath<State>
+    for LerpPathDiscretePath<'a, State>
+{
     fn defined_range(&self) -> RangeInclusive<f64> {
         let TimedState(_, t0) = self.0.states.first();
         let TimedState(_, t1) = self.0.states.last();
@@ -177,7 +182,7 @@ mod tests {
     use crate::path::{LerpPathDiscretePath, NonEmptyPointsPath, ParametrizedPath, TimedState};
     use core::iter::once;
     use nonempty::NonEmpty;
-    
+
     use rand::distributions::Uniform;
     use rand::{thread_rng, Rng};
 

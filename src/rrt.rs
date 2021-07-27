@@ -6,8 +6,8 @@ use acap::{NearestNeighbors, Proximity};
 use nonempty::NonEmpty;
 
 use std::option::Option;
-use std::rc::Rc;
 use std::prelude::v1::*;
+use std::rc::Rc;
 
 // A small struct containing a State, and an RC to its parent.
 struct StateWithParent<State> {
@@ -191,9 +191,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::point_state::PointState;
     use acap::Proximity;
     use rand::{thread_rng, Rng};
-    use crate::point_state::PointState;
 
     #[test]
     fn rrt_1d() {

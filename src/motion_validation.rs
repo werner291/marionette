@@ -61,7 +61,9 @@ where
             .any(|i| {
                 let t = i as f64 / (samples - 1) as f64;
 
-                !self.validate_state.validate_state(&st1.linear_interpolate(st2, t))
+                !self
+                    .validate_state
+                    .validate_state(&st1.linear_interpolate(st2, t))
             })
             .not()
     }
@@ -89,11 +91,12 @@ where
 }
 
 impl<State, Validate, Steer> SteeredSamplingValidator<State, Validate, Steer>
-    where
+where
     State: LinearInterpolate<f64>,
     Validate: StateValidator<State>,
-    Steer: SteeringFunction<State>, {
-    pub fn new(validate_state:Validate, steering_function:Steer, sample_interval: f64) -> Self {
+    Steer: SteeringFunction<State>,
+{
+    pub fn new(validate_state: Validate, steering_function: Steer, sample_interval: f64) -> Self {
         Self {
             validate_state,
             steering_function,
@@ -116,15 +119,14 @@ where
         debug_assert_eq!(0.0, *steer_path.defined_range().start());
         let steer_range = steer_path.defined_range();
 
-        (0..samples)
-            .all(|i| {
-                let t = i as f64 / (samples - 1) as f64;
+        (0..samples).all(|i| {
+            let t = i as f64 / (samples - 1) as f64;
 
-                self.validate_state.validate_state(
-                    &steer_path
-                        .sample(t * steer_range.end())
-                        .expect("Steering function received out-of-range parameter."),
-                )
-            })
+            self.validate_state.validate_state(
+                &steer_path
+                    .sample(t * steer_range.end())
+                    .expect("Steering function received out-of-range parameter."),
+            )
+        })
     }
 }

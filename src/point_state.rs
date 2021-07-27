@@ -1,6 +1,6 @@
 use crate::state::{Distance, LinearInterpolate};
 use acap::{Metric, Proximity};
-use nalgebra::{Point3, Point, SimdValue};
+use nalgebra::{Point, Point3, SimdValue};
 
 #[derive(Copy, Clone)]
 pub struct PointState<const D: usize>(pub Point<f64, D>);
@@ -26,7 +26,8 @@ impl<const D: usize> Metric for PointState<D> {}
 impl<const D: usize> LinearInterpolate<f64> for PointState<D> {
     fn linear_interpolate(&self, other: &Self, t: f64) -> Self {
         PointState(Point::from(
-            self.0.zip_map_lanes(other.0.clone(), |a,b| a.linear_interpolate(&b, t))
+            self.0
+                .zip_map_lanes(other.0.clone(), |a, b| a.linear_interpolate(&b, t)),
         ))
     }
 }

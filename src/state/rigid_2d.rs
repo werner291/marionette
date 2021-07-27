@@ -1,4 +1,3 @@
-
 use crate::state::{Distance, LinearInterpolate};
 
 /// A state that represents a 2D isometry: position and rotation.
