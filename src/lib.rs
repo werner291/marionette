@@ -19,7 +19,7 @@ mod tests {
     use crate::state::rigid_2d::RigidBodyState2;
     use crate::state::Distance;
 
-    use crate::dubins::{compute_dubins_motion, DubinsMotion};
+    use crate::dubins::{shortest_dubins_motion, DubinsMotion};
     use kiss3d::window::Window;
     use nalgebra::{Isometry2, Isometry3, Vector2, Vector3};
     use ncollide2d::shape::Cuboid;
@@ -58,7 +58,7 @@ mod tests {
             end: &RigidBodyState2,
             start_time: f64,
         ) -> DubinsMotion {
-            compute_dubins_motion(start, end, start_time, 1.0)
+            shortest_dubins_motion(start, end, start_time, 1.0)
         }
 
         let path = rrt_connect(

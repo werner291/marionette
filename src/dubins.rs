@@ -422,7 +422,7 @@ pub fn three_circular_motion(
 }
 
 /// Build the minimal dubins path between two [`RigidBodyState2`]s.
-pub fn compute_dubins_motion(
+pub fn shortest_dubins_motion(
     from: &RigidBodyState2,
     to: &RigidBodyState2,
     start_time: f64,
@@ -525,35 +525,11 @@ mod tests {
                                     end_point in arbitrary_dubins_state(100.0),
                                     steering_direction in arbitrary_left_right(),
         radius in 0.5 ..= 2.0) {
-            let motion = compute_dubins_motion(&start_point, &end_point, 0.0, radius);
+            let motion = shortest_dubins_motion(&start_point, &end_point, 0.0, radius);
                 check_dubins_motion(start_point, end_point, motion);
 
         }
     }
-    //
-    // #[test]
-    // fn test_inner_tangent_single() {
-    //
-    //     let start_point = RigidBodyState2(Isometry2::identity());
-    //     let end_point = RigidBodyState2(Isometry2::new(Vector2::new(0.0,95.169),PI/2.0+0.01));
-    //     let steering_direction = Left;
-    //     let radius = 0.5;
-    //
-    //     if let Some(motion) = inner_tangent_motion(&start_point, &end_point, 0.0, steering_direction, radius) {
-    //
-    //         let steps = 1000;
-    //
-    //         for i in 0..=steps {
-    //
-    //             let t1 = motion.defined_range().end() * (i as f64 / steps as f64);
-    //             let sample = motion.sample(t1).unwrap();
-    //
-    //             println!("{}, {}", sample.0.translation.vector.x, sample.0.translation.vector.y);
-    //         }
-    //
-    //         check_dubins_motion(start_point, end_point, motion);
-    //     }
-    // }
 
     /// Checks to make sure that the provided [`DubinsMotion`] fulfills the following criteria:
     /// - It starts at the start point (according to defined_range())
